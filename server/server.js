@@ -227,8 +227,46 @@ app.post('/api/action/combat', auth, async (req, res) => {
 });
 
 app.get('/api/rankings', auth, async (req, res) => res.json(await User.find({ role: 'player' }).select('name level xp kills -_id').sort({ xp: -1 }).limit(50).lean()));
-app.get('/api/map', auth, async (req, res) => res.json(await User.aggregate([{ $match: { role: 'player' } }, { $lookup: { from: 'cities', localField: '_id', foreignField: 'userId', as: 'cityData' } }, { $unwind: '$cityData' }, { $project: { id: '$_id', name: 1, city: '$cityData.cityName', threat: '$cityData.threat', level: 1, kills: 1 } }, { $sort: { level: -1 } }]));
+app.get('/api/map', auth, async (req, res) => {
+  try {
+    const cities = await User.aggregate([
+      {
+        $match: { role: 'player' }
+      },
+      {
+        $lookup: {
+          from: 'cities',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'cityData'
+        }
+      },
+      {
+        $unwind: '$cityData'
+      },
+      {
+        $project: {
+          id: '$_id',
+          name: 1,
+          city: '$cityData.cityName',
+          threat: '$cityData.threat',
+          level: 1,
+          kills: 1
+        }
+      },
+      {
+        $sort: { level: -1 }
+      }
+    ]);
 
+    res.json(cities);
+  } catch (error) {
+    console.error('[DEADFALL] Map error:', error);
+    res.status(500).json({
+      error: 'Failed to load map data'
+    });
+  }
+});
 app.get('/api/admin/players', auth, admin, async (req, res) => res.json(await User.aggregate([{ $lookup: { from: 'cities', localField: '_id', foreignField: 'userId', as: 'city' } }, { $unwind: '$city' }, { $project: { id: '$_id', email: 1, name: 1, role: 1, xp: 1, level: 1, kills: 1, createdAt: 1, food: '$city.food', wood: '$city.wood', metal: '$city.metal', fuel: '$city.fuel', wall: '$city.wall', threat: '$city.threat' } }, { $sort: { createdAt: -1 } }]));
 
 app.post('/api/admin/give', auth, admin, async (req, res) => {
