@@ -370,20 +370,19 @@ setInterval(async () => {
   io.to('world').emit('world:tick', { ts: Date.now() });
 }, 60000);
 
-// Start HTTP server immediately so Hostinger detects the application.
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(
-    `[DEADFALL] Backend listening on port ${PORT}`
-  );
-  console.log(
-    `[DEADFALL] Backend URL: ${
-      process.env.PUBLIC_BACKEND_URL || 'https://game.k7devs.com'
-    }`
-  );
-});
+async function start() {
+  // Start listening immediately so Hostinger detects the application
+  // within its startup timeout.
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[DEADFALL] Backend listening on port ${PORT}`);
+    console.log(
+      `[DEADFALL] Backend URL: ${
+        process.env.PUBLIC_BACKEND_URL || 'https://game.k7devs.com'
+      }`
+    );
+  });
 
-// Connect to MongoDB after the HTTP server is listening.
-async function initializeDatabase() {
+  // Connect to MongoDB after the server is listening.
   try {
     console.log('[DEADFALL] Connecting to MongoDB...');
 
@@ -427,17 +426,13 @@ async function initializeDatabase() {
     }
 
     console.log('[DEADFALL] Database initialization complete');
+
   } catch (error) {
     console.error(
       '[DEADFALL] MongoDB initialization failed:',
       error.message
     );
-
-    // Keep the HTTP server alive so Hostinger does not mark
-    // the application as failed. API routes will report DB errors.
   }
 }
 
-initializeDatabase();
-
-start().catch(err => { console.error('[DEADFALL] Startup failed:', err); process.exit(1); });
+start();
