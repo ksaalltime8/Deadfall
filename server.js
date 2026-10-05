@@ -2728,6 +2728,94 @@ app.post(
   }
 );
 
+
+// ============================================================
+// ADMIN — BAN / UNBAN PLAYER
+// ============================================================
+
+app.post(
+  '/api/admin/ban',
+  auth,
+  dbRequired,
+  admin,
+  async (req, res) => {
+    try {
+      const targetId =
+        cleanText(
+          req.body.playerId,
+          50
+        );
+
+      if (!targetId) {
+        return res.status(400).json({
+          error: 'Player ID is required.'
+        });
+      }
+
+      const banned =
+        Boolean(req.body.banned);
+
+      const user =
+        await User.findById(targetId);
+
+      if (!user) {
+        return res.status(404).json({
+          error: 'Player not found.'
+        });
+      }
+
+      // Don't allow an admin to accidentally ban themselves.
+      if (
+        String(user._id) ===
+        String(req.user._id)
+      ) {
+        return res.status(400).json({
+          error: 'You cannot ban yourself.'
+        });
+      }
+
+      user.banned = banned;
+
+      await user.save();
+
+      await logAdmin(
+        req.user._id,
+        banned ? 'BAN_PLAYER' : 'UNBAN_PLAYER',
+        targetId,
+        {
+          banned
+        }
+      );
+
+      // Notify connected player immediately.
+      sendUser(
+        targetId,
+        'account:banned',
+        {
+          banned
+        }
+      );
+
+      res.json({
+        ok: true,
+        banned
+      });
+
+    } catch (e) {
+      console.error(
+        '[DEADFALL] admin ban:',
+        e
+      );
+
+      res.status(500).json({
+        error:
+          'Failed to update player ban status.'
+      });
+    }
+  }
+);
+
+
 // ============================================================
 // ADMIN — KICK
 // ============================================================
