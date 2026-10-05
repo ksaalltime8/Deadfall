@@ -587,11 +587,18 @@ const broadcastWorld = (
   );
 };
 
+const normalizeRole = role => {
+  const value = String(role || '').trim().toLowerCase();
+
+  return value === 'admin' ? 'admin' : 'player';
+};
+
 const sign = user => {
   return jwt.sign(
     {
       id: String(user._id),
-      role: user.role
+      email: user.email,
+      role: normalizeRole(user.role)
     },
     JWT_SECRET,
     {
@@ -602,13 +609,14 @@ const sign = user => {
 
 const safeUser = user => ({
   _id: String(user._id),
+  id: String(user._id),
   email: user.email,
   name: user.name,
-  role: user.role,
-  xp: user.xp,
-  level: user.level,
-  kills: user.kills,
-  banned: user.banned,
+  role: normalizeRole(user.role),
+  xp: Number(user.xp || 0),
+  level: Number(user.level || 1),
+  kills: Number(user.kills || 0),
+  banned: Boolean(user.banned),
   createdAt: user.createdAt,
   lastSeen: user.lastSeen
 });
@@ -723,6 +731,8 @@ async function logAdmin(
     );
   }
 }
+
+
 
 // ============================================================
 // PLAYER INITIALIZATION
@@ -1006,6 +1016,17 @@ function admin(
 
   next();
 }
+
+
+//=========
+// role
+// ========
+
+const normalizeRole = role => {
+  const value = String(role || '').trim().toLowerCase();
+
+  return value === 'admin' ? 'admin' : 'player';
+};
 
 // ============================================================
 // DATABASE REQUIRED
