@@ -2817,7 +2817,7 @@ app.post(
 
 
 // ============================================================
-// ADMIN — KICK
+// ADMIN — KICK PLAYER
 // ============================================================
 
 app.post(
@@ -2827,49 +2827,56 @@ app.post(
   admin,
   async (req, res) => {
     try {
+
       const targetId =
         cleanText(
           req.body.playerId,
           50
         );
 
-      if (
-        targetId ===
-        String(req.user._id)
-      ) {
+      if (!targetId) {
         return res.status(400).json({
-          error:
-            'You cannot kick yourself.'
+          error: 'Player ID is required.'
         });
       }
 
-      const sockets =
-        socketsByUser.get(
-          targetId
+      const user =
+        await User.findById(targetId);
+
+      if (!user) {
+        return res.status(404).json({
+          error: 'Player not found.'
+        });
+      }
+
+      // Find the player's active socket/session.
+      const socket =
+        onlinePlayers.get(
+          String(targetId)
         );
 
-      if (sockets) {
-        for (
-          const socketId of sockets
-        ) {
-          const socket =
-            io.sockets.sockets.get(
-              socketId
-            );
-
-          if (socket) {
-            socket.disconnect(
-              true
-            );
-          }
-        }
+      if (!socket) {
+        return res.status(400).json({
+          error: 'Player is not currently online.'
+        });
       }
+
+      socket.emit(
+        'admin:kick',
+        {
+          reason: 'Removed by administrator.'
+        }
+      );
+
+      socket.disconnect(true);
 
       await logAdmin(
         req.user._id,
-        'KICK',
+        'KICK_PLAYER',
         targetId,
-        {}
+        {
+          reason: 'Administrator kick'
+        }
       );
 
       res.json({
@@ -2877,6 +2884,7 @@ app.post(
       });
 
     } catch (e) {
+
       console.error(
         '[DEADFALL] admin kick:',
         e
@@ -2886,9 +2894,11 @@ app.post(
         error:
           'Failed to kick player.'
       });
+
     }
   }
 );
+
 
 // ============================================================
 // ADMIN — HORDE
