@@ -2849,38 +2849,62 @@ app.post(
         });
       }
 
-      // Find the player's active socket/session.
-      const socket =
-        onlinePlayers.get(
-          String(targetId)
-        );
+      const userId =
+        String(user._id);
 
-      if (!socket) {
-        return res.status(400).json({
-          error: 'Player is not currently online.'
-        });
-      }
+      const socketIds =
+        socketsByUser.get(userId);
 
-      socket.emit(
-        'admin:kick',
-        {
-          reason: 'Removed by administrator.'
+      let kicked = 0;
+
+      if (socketIds && socketIds.size) {
+
+        /*
+         * Copy the IDs first because disconnecting
+         * sockets will modify the Set.
+         */
+        for (const socketId of [...socketIds]) {
+
+          const socket =
+            io.sockets.sockets.get(socketId);
+
+          if (socket) {
+
+            socket.emit(
+              'admin:kick',
+              {
+                reason:
+                  'You were kicked by an administrator.'
+              }
+            );
+
+            socket.disconnect(true);
+
+            kicked++;
+          }
         }
-      );
-
-      socket.disconnect(true);
+      }
 
       await logAdmin(
         req.user._id,
-        'KICK_PLAYER',
+        'KICK',
         targetId,
         {
-          reason: 'Administrator kick'
+          kicked,
+          player:
+            user.name ||
+            user.email ||
+            targetId
         }
       );
 
+      console.log(
+        `[DEADFALL] Admin kicked ${user.name || targetId} (${kicked} socket(s))`
+      );
+
       res.json({
-        ok: true
+        ok: true,
+        kicked
       });
 
     } catch (e) {
@@ -2894,7 +2918,6 @@ app.post(
         error:
           'Failed to kick player.'
       });
-
     }
   }
 );
