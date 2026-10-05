@@ -1,4 +1,0 @@
--- DEADFALL now uses MongoDB. This SQL file is intentionally unused.
--- Configure MONGODB_URI in .env instead.
--- MongoDB collections are created automatically by Mongoose on first startup:
--- users, cities, buildings, armies, missions, adminlogs
