@@ -1,0 +1,2 @@
+-- The bundled server auto-creates this SQLite schema for zero-config local play.
+-- For production MySQL deployment, migrate these tables to MySQL and replace the DB adapter.
