@@ -267,8 +267,51 @@ app.get('/api/map', auth, async (req, res) => {
     });
   }
 });
-app.get('/api/admin/players', auth, admin, async (req, res) => res.json(await User.aggregate([{ $lookup: { from: 'cities', localField: '_id', foreignField: 'userId', as: 'city' } }, { $unwind: '$city' }, { $project: { id: '$_id', email: 1, name: 1, role: 1, xp: 1, level: 1, kills: 1, createdAt: 1, food: '$city.food', wood: '$city.wood', metal: '$city.metal', fuel: '$city.fuel', wall: '$city.wall', threat: '$city.threat' } }, { $sort: { createdAt: -1 } }]));
+app.get('/api/admin/players', auth, admin, async (req, res) => {
+  try {
+    const players = await User.aggregate([
+      {
+        $lookup: {
+          from: 'cities',
+          localField: '_id',
+          foreignField: 'userId',
+          as: 'city'
+        }
+      },
+      {
+        $unwind: '$city'
+      },
+      {
+        $project: {
+          id: '$_id',
+          email: 1,
+          name: 1,
+          role: 1,
+          xp: 1,
+          level: 1,
+          kills: 1,
+          createdAt: 1,
+          food: '$city.food',
+          wood: '$city.wood',
+          metal: '$city.metal',
+          fuel: '$city.fuel',
+          wall: '$city.wall',
+          threat: '$city.threat'
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      }
+    ]);
 
+    res.json(players);
+  } catch (error) {
+    console.error('[DEADFALL] Admin players error:', error);
+    res.status(500).json({
+      error: 'Failed to load players'
+    });
+  }
+});
 app.post('/api/admin/give', auth, admin, async (req, res) => {
   const { userId, resource, amount } = req.body;
   if (!['food','wood','metal','fuel'].includes(resource)) return res.sendStatus(400);
