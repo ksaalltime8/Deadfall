@@ -370,19 +370,74 @@ setInterval(async () => {
   io.to('world').emit('world:tick', { ts: Date.now() });
 }, 60000);
 
-async function start() {
-  await mongoose.connect(MONGODB_URI);
-  console.log('[DEADFALL] MongoDB connected');
-  const adminEmail = (process.env.ADMIN_EMAIL || 'admin@iik27.com').toLowerCase();
-  let adminUser = await User.findOne({ email: adminEmail });
-  if (!adminUser) {
-    adminUser = await User.create({ email: adminEmail, password: await bcrypt.hash(process.env.ADMIN_PASSWORD || 'ChangeMe_123!', 12), name: 'Administrator', role: 'admin' });
-    await seedUser(adminUser);
-    console.log(`[DEADFALL] Admin account created: ${adminEmail}`);
-  } else if (adminUser.role !== 'admin') {
-    adminUser.role = 'admin'; await adminUser.save();
+// Start HTTP server immediately so Hostinger detects the application.
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(
+    `[DEADFALL] Backend listening on port ${PORT}`
+  );
+  console.log(
+    `[DEADFALL] Backend URL: ${
+      process.env.PUBLIC_BACKEND_URL || 'https://game.k7devs.com'
+    }`
+  );
+});
+
+// Connect to MongoDB after the HTTP server is listening.
+async function initializeDatabase() {
+  try {
+    console.log('[DEADFALL] Connecting to MongoDB...');
+
+    await mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000
+    });
+
+    console.log('[DEADFALL] MongoDB connected');
+
+    const adminEmail = (
+      process.env.ADMIN_EMAIL || 'admin@iik27.com'
+    ).toLowerCase();
+
+    let adminUser = await User.findOne({
+      email: adminEmail
+    });
+
+    if (!adminUser) {
+      adminUser = await User.create({
+        email: adminEmail,
+        password: await bcrypt.hash(
+          process.env.ADMIN_PASSWORD || 'ChangeMe_123!',
+          12
+        ),
+        name: 'Administrator',
+        role: 'admin'
+      });
+
+      await seedUser(adminUser);
+
+      console.log(
+        `[DEADFALL] Admin account created: ${adminEmail}`
+      );
+    } else if (adminUser.role !== 'admin') {
+      adminUser.role = 'admin';
+      await adminUser.save();
+
+      console.log(
+        `[DEADFALL] Existing account promoted to admin: ${adminEmail}`
+      );
+    }
+
+    console.log('[DEADFALL] Database initialization complete');
+  } catch (error) {
+    console.error(
+      '[DEADFALL] MongoDB initialization failed:',
+      error.message
+    );
+
+    // Keep the HTTP server alive so Hostinger does not mark
+    // the application as failed. API routes will report DB errors.
   }
-  server.listen(PORT, '0.0.0.0', () => console.log(`DEADFALL backend running at ${process.env.PUBLIC_BACKEND_URL || 'https://game.k7devs.com'} on port ${PORT}`));
 }
+
+initializeDatabase();
 
 start().catch(err => { console.error('[DEADFALL] Startup failed:', err); process.exit(1); });
