@@ -1018,16 +1018,6 @@ function admin(
 }
 
 
-//=========
-// role
-// ========
-
-const normalizeRole = role => {
-  const value = String(role || '').trim().toLowerCase();
-
-  return value === 'admin' ? 'admin' : 'player';
-};
-
 // ============================================================
 // DATABASE REQUIRED
 // ============================================================
